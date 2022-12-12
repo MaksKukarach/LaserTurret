@@ -1,14 +1,20 @@
 import cv2, serial, psutil
 from cvzone.PoseModule import PoseDetector
-from guppy import hpy 
+from guppy import hpy
+from time import sleep
 
 psutil.virtual_memory()
-ser = serial.Serial("COM1", 300)
+
+# Initial setup
+ser = serial.Serial("COM4", 9600)
 detector = PoseDetector()
 cap = cv2.VideoCapture(0)
 
 h = hpy()
 print(h.heap())
+
+last_x = 0
+last_y = 0
 
 while True:
     success, frame = cap.read()
@@ -18,12 +24,17 @@ while True:
         break
 
     frame = detector.findPose(frame)
-    lmlist, bbox = detector.findPosition(frame)
+    temp, bbox = detector.findPosition(frame)
 
     if bbox != dict():
-        Xcoord = 120-int(bbox.get('center', 0)[0]/(640/120))
-        Ycoord = int((bbox.get('center', 0)[1]/(480/60)))+45
-        ser.write(str.encode(f"X{Xcoord}Y{Ycoord}"))
+        X = 120 - int(bbox.get('center', 0)[0] / (6)) # Subtraction from 120 inverts the direction
+        Y = int( (bbox.get('center', 0)[1]) / 6)  # You can change constants to adjust "sensitivity", might fix later
+        if abs(X - last_x) >= 2 or abs(Y - last_y) > 1:
+            ser.write(str.encode(f"X{X}Y{Y}"))
+            print(X, Y)
+            last_x = X
+            last_y = Y
+        
 
     cv2.imshow("human detection", frame)
  
